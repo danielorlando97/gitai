@@ -1,0 +1,10 @@
+*.db
+*.sqlite
+*.sqlite3
+git_splitter.db
+PR_SUMMARY.md
+temp.patch
+__pycache__/*
+*.patch
+
+

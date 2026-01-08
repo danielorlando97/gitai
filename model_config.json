@@ -1,0 +1,132 @@
+{
+  "resource_scales": {
+    "low": {
+      "description": "Máquinas de recursos muy limitados (IoT, portátiles antiguos). Prioridad: Velocidad extrema y bajo consumo.",
+      "detection": {
+        "max_ram_gb": 4,
+        "max_cores": 4,
+        "min_vram_gb": 0,
+        "max_vram_gb": 2
+      },
+      "models": {
+        "ollama": [
+          "llama3.2:1b",
+          "qwen2.5:1.5b",
+          "qwen2.5:0.5b"
+        ],
+        "gemini": [
+          "models/gemini-1.5-flash-8b",
+          "models/gemini-1.5-flash"
+        ],
+        "openai": [
+          "gpt-4o-mini"
+        ]
+      }
+    },
+    "medium": {
+      "description": "Portátiles estándar y ultrabooks (8-16GB RAM). Capaces de ejecutar modelos de 3B a 8B cuantizados.",
+      "detection": {
+        "max_ram_gb": 16,
+        "max_cores": 8,
+        "min_vram_gb": 2,
+        "max_vram_gb": 8
+      },
+      "models": {
+        "ollama": [
+          "llama3.2:3b",
+          "qwen2.5:7b",
+          "phi4:14b",
+          "gemma2:9b"
+        ],
+        "gemini": [
+          "models/gemini-1.5-flash",
+          "models/gemini-2.0-flash-exp"
+        ],
+        "openai": [
+          "gpt-4o-mini"
+        ]
+      }
+    },
+    "high": {
+      "description": "Workstations CPU o portátiles gaming gama media (16-32GB RAM). Modelos de 9B a 14B funcionan fluidos.",
+      "detection": {
+        "max_ram_gb": 32,
+        "max_cores": 24,
+        "min_vram_gb": 4,
+        "max_vram_gb": 12
+      },
+      "models": {
+        "ollama": [
+          "mistral-nemo:12b",
+          "qwen2.5:14b",
+          "gemma2:9b",
+          "llama3.1:8b"
+        ],
+        "gemini": [
+          "models/gemini-2.0-flash-exp",
+          "models/gemini-1.5-pro"
+        ],
+        "openai": [
+          "gpt-4o",
+          "o1-mini"
+        ]
+      }
+    },
+    "gpu_high": {
+      "description": "PCs con GPUs dedicadas potentes (RTX 3090/4090, 16-24GB VRAM). Capaces de modelos medianos-grandes (27B-32B).",
+      "detection": {
+        "max_ram_gb": 64,
+        "max_cores": 32,
+        "min_vram_gb": 12,
+        "max_vram_gb": 24
+      },
+      "models": {
+        "ollama": [
+          "qwen2.5:32b",
+          "gemma2:27b",
+          "mistral-small:22b",
+          "llama3.3:70b"
+        ],
+        "gemini": [
+          "models/gemini-1.5-pro",
+          "models/gemini-2.0-flash-exp"
+        ],
+        "openai": [
+          "gpt-4o",
+          "o1-preview"
+        ]
+      }
+    },
+    "very_high": {
+      "description": "Servidores o Mac Studio/Pro (64GB+ RAM/VRAM). Ejecución de modelos Frontier (70B+).",
+      "detection": {
+        "max_ram_gb": 999999,
+        "max_cores": 999999,
+        "min_vram_gb": 24,
+        "max_vram_gb": 999999
+      },
+      "models": {
+        "ollama": [
+          "llama3.3:70b",
+          "qwen2.5:72b",
+          "deepseek-v3",
+          "mixtral:8x22b"
+        ],
+        "gemini": [
+          "models/gemini-1.5-pro",
+          "models/gemini-ultra"
+        ],
+        "openai": [
+          "gpt-4o",
+          "o1"
+        ]
+      }
+    }
+  },
+  "provider_priority": [
+    "ollama",
+    "gemini",
+    "openai"
+  ],
+  "default_provider": "ollama"
+}

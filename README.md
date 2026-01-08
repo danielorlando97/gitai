@@ -33,7 +33,7 @@ Este script:
 
 ```bash
 pip install -r requirements.txt
-chmod +x git_splitter.py
+chmod +x src/main.py
 ```
 
 ## Configuración
@@ -128,7 +128,7 @@ Asegúrate de tener Ollama corriendo localmente.
 ```bash
 git-split
 # O
-python git_splitter.py
+python src/main.py
 ```
 
 El script te pedirá:

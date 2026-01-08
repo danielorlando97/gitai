@@ -7,13 +7,13 @@ echo "🔧 Instalando GitClassifier..."
 pip install -qU -r requirements.txt
 
 # Hacer el script ejecutable
-chmod +x git_splitter.py
+chmod +x src/main.py
 
 # Crear alias global (opcional)
 read -p "¿Crear alias 'git-split' globalmente? (s/N): " create_alias
 
 if [[ "$create_alias" == "s" || "$create_alias" == "S" ]]; then
-    SCRIPT_PATH=$(pwd)/git_splitter.py
+    SCRIPT_PATH=$(pwd)/src/main.py
     ALIAS_CMD="alias git-split='python3 $SCRIPT_PATH'"
     
     # Detectar shell
@@ -46,7 +46,7 @@ echo "   # O"
 echo "   export OPENAI_API_KEY='tu-api-key'  # Para OpenAI"
 echo ""
 echo "🚀 Uso:"
-echo "   python3 git_splitter.py"
+echo "   python3 src/main.py"
 if [[ "$create_alias" == "s" || "$create_alias" == "S" ]]; then
     echo "   # O después de 'source $CONFIG_FILE':"
     echo "   git-split"

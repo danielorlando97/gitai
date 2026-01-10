@@ -16,26 +16,35 @@ def create_parser(commands: Optional[List[BaseCommand]] = None) -> argparse.Argu
         Configured argument parser
     """
     parser = argparse.ArgumentParser(
-        description='GitClassifier: Clasifica y divide cambios de Git en commits semánticos',
+        description='GitClassifier: Classify and split Git changes into semantic commits',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Ejemplos:
-  # Usar diff desde archivo con LLM
+Examples:
+  # Use diff from file with LLM
   git-split --diff-file diff.patch --use-llm --provider gemini
 
-  # Usar git diff con configuración completa
+  # Use git diff with full configuration
   git-split --target main --use-llm --provider gemini --mode step-by-step --generate-pr
 
-  # Modo no interactivo completo
+  # Full non-interactive mode
   git-split --diff-file diff.patch --use-llm --provider gemini \\
     --mode normal --generate-pr --test-cmd "pytest" --execute
+
+  # Manage API keys
+  git-split api-key add gemini "My key"
+  git-split api-key list
+  git-split api-key delete 1
+
+  # Manage Ollama
+  git-split ollama status
+  git-split ollama pull llama3.2:3b
         """
     )
 
     subparsers = parser.add_subparsers(
         dest='command',
-        help='Comandos disponibles',
-        metavar='COMANDO'
+        help='Available commands',
+        metavar='COMMAND'
     )
 
     if commands:

@@ -12,50 +12,70 @@ class APIKeyCommand(BaseCommand):
     """Command for managing API keys."""
 
     name = "api-key"
-    description = "Gestiona API keys de LLMs"
+    description = "Manage LLM API keys"
 
     def add_arguments(self, parser: argparse.ArgumentParser) -> None:
         """Add command-specific arguments."""
         subparsers = parser.add_subparsers(
             dest='subcommand',
-            help='Subcomandos disponibles',
+            help='Available subcommands',
             required=True
         )
 
         add_parser = subparsers.add_parser(
             'add',
-            help='Añadir API key'
+            help='Add a new API key',
+            description=('Add a new API key for an LLM provider. '
+                        'You will be prompted to enter the API key securely. '
+                        'Multiple keys can be added for the same provider to '
+                        'enable automatic rotation when rate limits are reached.')
         )
         add_parser.add_argument(
             'provider',
             choices=['gemini', 'openai', 'ollama'],
-            help='Proveedor LLM'
+            metavar='PROVIDER',
+            help=('LLM provider: gemini (Google Gemini), openai (OpenAI), '
+                  'or ollama (note: Ollama does not require API keys as it '
+                  'runs locally)')
         )
         add_parser.add_argument(
             'name',
             nargs='?',
-            help='Nombre opcional para la API key'
+            metavar='NAME',
+            help=('Optional descriptive name for the API key. '
+                  'Useful when managing multiple keys for the same provider. '
+                  'Example: "Primary key", "Backup key 1"')
         )
 
         list_parser = subparsers.add_parser(
             'list',
-            help='Listar API keys'
+            help='List all API keys',
+            description=('List all stored API keys. Optionally filter by '
+                        'provider. Shows key ID, provider, name, creation date, '
+                        'last used date, and usage count.')
         )
         list_parser.add_argument(
             'provider',
             nargs='?',
             choices=['gemini', 'openai', 'ollama'],
-            help='Filtrar por proveedor'
+            metavar='PROVIDER',
+            help=('Optional: Filter keys by provider. '
+                  'If not specified, shows all keys for all providers.')
         )
 
         delete_parser = subparsers.add_parser(
             'delete',
-            help='Eliminar API key'
+            help='Delete an API key',
+            description=('Delete an API key by its ID. You can find the key ID '
+                        'by running "git-split api-key list". '
+                        'Confirmation will be requested before deletion.')
         )
         delete_parser.add_argument(
             'key_id',
             type=int,
-            help='ID de la API key a eliminar'
+            metavar='ID',
+            help=('ID of the API key to delete. '
+                  'Get the ID from "git-split api-key list" output.')
         )
 
     def execute(self, args: argparse.Namespace) -> int:

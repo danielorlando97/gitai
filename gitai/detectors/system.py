@@ -15,11 +15,7 @@ class SystemResourceDetector(AbstractDetector):
 
     def __init__(self, config_path: Optional[str] = None):
         """Initialize detector with config path."""
-        if config_path is None:
-            # Default to config/model_config.json
-            base_dir = Path(__file__).parent.parent.parent.parent
-            config_path = str(base_dir / "config" / "model_config.json")
-        self.config_path = config_path
+        self.config_path = './config/model_config.json'
 
     def _get_gpu_info(self) -> Tuple[Optional[float], Optional[str]]:
         """Detect GPU information (VRAM and type)."""
@@ -262,11 +258,10 @@ class SystemResourceDetector(AbstractDetector):
         if config_path is None:
             config_path = self.config_path
 
-        try:
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-        except FileNotFoundError:
-            return None
+
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+
 
         if scale is None:
             scale = self.detect_scale(config_path)

@@ -235,8 +235,8 @@ DetectorFactory.register("custom", CustomDetector)
 ### Usar un Provider
 
 ```python
-from src.providers import ProviderFactory
-from src.storage import APIKeyRepository
+from gitai.providers import ProviderFactory
+from gitai.storage import APIKeyRepository
 
 # Crear key manager
 key_manager = APIKeyRepository()
@@ -256,9 +256,9 @@ response = provider.invoke("Hello, world!")
 ### Usar un Classifier
 
 ```python
-from src.classifiers import SemanticClassifier
-from src.models.hunk import Hunk
-from src.storage import APIKeyRepository
+from gitai.classifiers import SemanticClassifier
+from gitai.models.hunk import Hunk
+from gitai.storage import APIKeyRepository
 
 # Crear classifier
 key_manager = APIKeyRepository()
@@ -278,8 +278,8 @@ plan = classifier.classify_hunks(hunks, goals)
 ### Usar un Executor
 
 ```python
-from src.executors import NormalExecutor, StepByStepExecutor
-from src.utils.git import get_current_head
+from gitai.executors import NormalExecutor, StepByStepExecutor
+from gitai.utils.git import get_current_head
 
 # Crear executor
 executor = NormalExecutor()

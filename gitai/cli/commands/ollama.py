@@ -16,30 +16,60 @@ class OllamaCommand(BaseCommand):
     """Command for managing Ollama."""
 
     name = "ollama"
-    description = "Configura y gestiona Ollama"
+    description = "Configure and manage Ollama"
 
     def add_arguments(self, parser: argparse.ArgumentParser) -> None:
         """Add command-specific arguments."""
         subparsers = parser.add_subparsers(
             dest='subcommand',
-            help='Subcomandos disponibles',
+            help='Available subcommands',
             required=True
         )
 
-        subparsers.add_parser('setup', help='Instalar y configurar Ollama')
-        subparsers.add_parser('status', help='Verificar estado de Ollama')
-        subparsers.add_parser('list', help='Listar modelos disponibles')
+        setup_parser = subparsers.add_parser(
+            'setup',
+            help='Install and configure Ollama',
+            description=('Check Ollama installation, verify service is running, '
+                        'check installed models, and verify Python dependencies. '
+                        'Provides installation instructions if Ollama is not found.')
+        )
+
+        status_parser = subparsers.add_parser(
+            'status',
+            help='Check Ollama service status',
+            description=('Verify that Ollama is installed, the service is running, '
+                        'and show installed models. Recommended first step when '
+                        'using Ollama provider.')
+        )
+
+        list_parser = subparsers.add_parser(
+            'list',
+            help='List available models',
+            description=('List all Ollama models currently installed on your system. '
+                        'Shows the same output as "ollama list" command.')
+        )
 
         pull_parser = subparsers.add_parser(
             'pull',
-            help='Descargar un modelo'
+            help='Download a model',
+            description=('Download an Ollama model. This may take several minutes '
+                        'depending on model size and internet speed. '
+                        'Recommended models: llama3.2:3b (small, fast), llama3.2 (larger, more capable).')
         )
         pull_parser.add_argument(
             'model',
-            help='Nombre del modelo a descargar'
+            metavar='MODEL',
+            help=('Name of the model to download. Examples: "llama3.2:3b", '
+                  '"llama3.2", "mistral", "codellama". '
+                  'See https://ollama.com/library for available models.')
         )
 
-        subparsers.add_parser('info', help='Mostrar información del sistema')
+        info_parser = subparsers.add_parser(
+            'info',
+            help='Show system information',
+            description=('Display system information including resource scale detection, '
+                        'recommended models for your system, and configuration details.')
+        )
 
     def execute(self, args: argparse.Namespace) -> int:
         """Execute the command."""

@@ -63,7 +63,26 @@ class PromptTemplates:
             "elige varios pequeños.\n"
             "\n"
             "Cambios:\n"
-            "{diff_summary}"
+            "{diff_summary}\n"
+            "\n"
+            "IMPORTANTE - FORMATO DE RESPUESTA:\n"
+            "Debes responder ÚNICAMENTE con un objeto JSON válido que "
+            "contenga una lista de objetivos. Cada objetivo debe tener un "
+            "campo 'id' (número entero) y un campo 'description' (texto con "
+            "el mensaje del commit).\n"
+            "\n"
+            "Ejemplo del formato esperado:\n"
+            "{{\n"
+            '  "goals": [\n'
+            '    {{"id": 1, "description": "feat: Add rules command to optuna"}},\n'
+            '    {{"id": 2, "description": "feat: Add trees command to optuna"}}\n'
+            "  ]\n"
+            "}}\n"
+            "\n"
+            "Responde SOLO con el JSON, sin texto adicional, explicaciones "
+            "ni comentarios.\n"
+            "\n"
+            "{format_instructions}"
         )
 
         return prompt

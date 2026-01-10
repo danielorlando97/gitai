@@ -11,13 +11,6 @@ except ImportError:
     HAS_OLLAMA_LANGCHAIN = False
     ChatOllama = None
 
-try:
-    from openai import OpenAI
-    HAS_OPENAI = True
-except ImportError:
-    HAS_OPENAI = False
-    OpenAI = None
-
 
 class OllamaProvider(AbstractProvider):
     """Ollama LLM provider."""
@@ -27,6 +20,11 @@ class OllamaProvider(AbstractProvider):
     def __init__(self, model_name: Optional[str] = None,
                  api_key: Optional[str] = None, **kwargs):
         """Initialize Ollama provider."""
+        if not HAS_OLLAMA_LANGCHAIN:
+            raise ImportError(
+                "Ollama requires langchain-ollama. "
+                "Install with: pip install langchain-ollama"
+            )
         if model_name is None:
             model_name = "llama3.2:3b"
         super().__init__(model_name, api_key, **kwargs)
@@ -36,22 +34,16 @@ class OllamaProvider(AbstractProvider):
     def get_client(self) -> Any:
         """Get Ollama client instance."""
         if self._client is None:
-            # Prioritize LangChain if available
-            if HAS_OLLAMA_LANGCHAIN and ChatOllama:
-                self._client = ChatOllama(
-                    model=self.model_name,
-                    base_url=self.base_url,
-                    temperature=0
-                )
-            elif HAS_OPENAI:
-                # Fallback to OpenAI-compatible client
-                base_url = f"{self.base_url}/v1"
-                self._client = OpenAI(base_url=base_url, api_key="ollama")
-            else:
-                raise ImportError(
-                    "Ollama requires langchain-ollama or openai. "
-                    "Install with: pip install langchain-ollama"
-                )
+            self._client = ChatOllama(
+                model=self.model_name,
+                base_url=self.base_url,
+                temperature=0
+            )
+            # Store key_id for rotation
+            if self._key_id:
+                self._client._key_id = self._key_id
+            if self._key_manager:
+                self._client._key_manager = self._key_manager
         return self._client
 
     def invoke(self, prompt: str, **kwargs) -> str:
@@ -64,4 +56,4 @@ class OllamaProvider(AbstractProvider):
 
     def supports_structured_output(self) -> bool:
         """Check if Ollama supports structured output."""
-        return HAS_OLLAMA_LANGCHAIN
+        return True

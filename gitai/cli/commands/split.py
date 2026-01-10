@@ -2,6 +2,7 @@
 
 import sys
 import os
+import re
 import subprocess
 import argparse
 from typing import Optional, Dict, List
@@ -26,7 +27,7 @@ class SplitCommand(BaseCommand):
     """Command for splitting git changes into semantic commits."""
 
     name = "split"
-    description = "Clasifica y divide cambios de Git en commits semánticos"
+    description = "Classify and split Git changes into semantic commits"
 
     def add_arguments(self, parser: argparse.ArgumentParser) -> None:
         """Add command-specific arguments."""
@@ -34,36 +35,61 @@ class SplitCommand(BaseCommand):
         diff_group.add_argument(
             '--diff-file', '-f',
             type=str,
-            help='Ruta al archivo de diff a analizar'
+            metavar='PATH',
+            help=('Path to diff file to analyze. '
+                  'The file must contain a valid git diff format. '
+                  'Commits will only be applied if the diff is compatible '
+                  'with the current repository state. '
+                  'Mutually exclusive with --target.')
         )
         diff_group.add_argument(
             '--target', '-t',
             type=str,
             default='main',
-            help='Rama target para comparar (default: main)'
+            metavar='BRANCH',
+            help=('Target branch to compare changes against. '
+                  'Default: main. '
+                  'If you are on the same branch as target, a temporary '
+                  'branch will be created automatically. '
+                  'Mutually exclusive with --diff-file.')
         )
 
         parser.add_argument(
             '--use-llm', '-l',
+            default=True,
             action='store_true',
-            help='Usar clasificación automática con LLM'
+            help=('Enable automatic classification using LLM. '
+                  'The LLM will analyze all changes to identify functional '
+                  'objectives and classify each hunk accordingly. '
+                  'If not specified, interactive mode will prompt for this.')
         )
         parser.add_argument(
             '--provider', '-p',
             type=str,
             choices=['ollama', 'gemini', 'openai'],
             default=None,
-            help='Proveedor LLM (default: auto-detectado)'
+            metavar='PROVIDER',
+            help=('LLM provider to use: ollama (local, free), '
+                  'gemini (fast, economical), or openai (high quality). '
+                  'Default: auto-detected (ollama if available, else gemini). '
+                  'Requires API keys for gemini and openai (use api-key command).')
         )
         parser.add_argument(
             '--user-context', '-c',
             type=str,
-            help='Contexto del usuario sobre los cambios (archivo o texto)'
+            metavar='TEXT_OR_FILE',
+            help=('User context about the changes to help improve '
+                  'classification accuracy. Can be direct text or path to a '
+                  'file containing the context. This context is provided to '
+                  'the LLM before it analyzes the changes.')
         )
         parser.add_argument(
             '--user-description', '-d',
             type=str,
-            help='Descripción del usuario para el PR (archivo o texto)'
+            metavar='TEXT_OR_FILE',
+            help=('User description for the Pull Request. Can be direct text '
+                  'or path to a file. This description will be included in '
+                  'the generated PR summary if --generate-pr is used.')
         )
 
         parser.add_argument(
@@ -71,33 +97,54 @@ class SplitCommand(BaseCommand):
             type=str,
             choices=['normal', 'step-by-step'],
             default='normal',
-            help='Modo de ejecución (default: normal)'
+            metavar='MODE',
+            help=('Execution mode: normal (creates all commits at once) or '
+                  'step-by-step (isolates each commit visually for individual '
+                  'review before confirmation). Default: normal.')
         )
         parser.add_argument(
             '--execute', '-e',
             action='store_true',
-            help='Ejecutar commits automáticamente sin confirmación'
+            help=('Execute commits automatically without confirmation. '
+                  'Useful for non-interactive mode or scripts. '
+                  'The Git Plan will still be displayed for review.')
         )
         parser.add_argument(
             '--edit-plan',
             action='store_true',
-            help='Editar el plan antes de ejecutar'
+            help=('Enter plan editor before executing commits. '
+                  'Allows manual editing of the commit plan: move files '
+                  'between commits, rename commits, discard commits, etc.')
         )
 
         parser.add_argument(
             '--generate-pr', '-g',
             action='store_true',
-            help='Generar resumen de Pull Request'
+            help=('Generate a professional Pull Request summary after '
+                  'creating commits. Uses LLM to create a concise summary. '
+                  'Saves to PR_SUMMARY.md file.')
         )
         parser.add_argument(
             '--test-cmd',
             type=str,
-            help='Comando para ejecutar tests después de los commits'
+            metavar='COMMAND',
+            help=('Command to execute tests after creating commits. '
+                  'Example: "pytest", "npm test", "make test". '
+                  'If tests fail, all commits will be automatically rolled back.')
         )
         parser.add_argument(
             '--skip-git-check',
             action='store_true',
-            help='Saltar verificación de repositorio Git'
+            help=('Skip Git repository verification. Useful when analyzing '
+                  'diffs from files without being in a Git repository. '
+                  'Note: commits cannot be applied without a Git repository.')
+        )
+        
+        parser.add_argument(
+            '--verbose', '-v',
+            default=False,
+            action='store_true',
+            help=('Verbose output. Useful for debugging.')
         )
 
     def execute(self, args: argparse.Namespace) -> int:
@@ -106,12 +153,23 @@ class SplitCommand(BaseCommand):
         original_branch = None
         diff_from_file = False
 
-        interactive = not any([
-            args.diff_file, args.target != 'main', args.use_llm,
-            args.provider, args.user_context, args.user_description,
-            args.mode != 'normal', args.execute, args.edit_plan,
-            args.generate_pr, args.test_cmd
-        ])
+        if args.verbose:
+            print(f"Init git-split with verbose mode")
+            print(f"Diff file: {args.diff_file}")
+            print(f"Target: {args.target}")
+            print(f"Use LLM: {args.use_llm}")
+            print(f"Provider: {args.provider}")
+            print(f"User context: {args.user_context}")
+            print(f"User description: {args.user_description}")
+            print(f"Mode: {args.mode}")
+            print(f"Execute: {args.execute}")
+            print(f"Edit plan: {args.edit_plan}")
+            print(f"Generate PR: {args.generate_pr}")
+            print(f"Test command: {args.test_cmd}")
+            print(f"Skip git check: {args.skip_git_check}")
+            print(f"Verbose: {args.verbose}")
+            print(f"--------------------------------")
+
 
         skip_git_check = args.diff_file and args.skip_git_check
 
@@ -127,7 +185,7 @@ class SplitCommand(BaseCommand):
                     return 1
 
         try:
-            diff, diff_from_file = self._get_diff(args, interactive)
+            diff, diff_from_file = self._get_diff(args)
             if not diff:
                 return 1
 
@@ -143,67 +201,78 @@ class SplitCommand(BaseCommand):
 
             print(f"\n📦 Se encontraron {len(hunks)} bloques de cambios.")
 
-            if args.use_llm or (interactive and self._ask_use_llm()):
-                provider = args.provider or self._get_provider(interactive)
+            if args.use_llm:
+                use_llm = True
+            else:
+                use_llm = self._ask_use_llm()
+
+            if not use_llm:
+                print("⚠️  Modo manual no implementado aún.")
+                return 1
+
+            if args.provider:
+                provider = args.provider
+            else:
+                provider = self._get_provider(args)
                 if not provider:
                     return 1
 
-                key_manager = None
-                if provider != "ollama":
-                    try:
-                        key_manager = APIKeyRepository()
-                    except Exception:
-                        pass
+            key_manager = None
+            if provider != "ollama":
+                try:
+                    key_manager = APIKeyRepository()
+                except Exception:
+                    pass
 
-                model_name = self._get_model_name(provider, key_manager)
-                if not model_name:
-                    return 1
-
-                user_context = self._get_user_context(
-                    args.user_context, provider, model_name, interactive
-                )
-
-                classifier = SemanticClassifier(
-                    provider=provider,
-                    key_manager=key_manager,
-                    model_name=model_name
-                )
-
-                print("\n🚀 Analizando cambios globalmente...")
-                goals = classifier.identify_goals(hunks, user_context)
-
-                if not goals:
-                    print("No se pudieron identificar objetivos. Abortando.")
-                    return 1
-
-                print(f"✓ Se identificaron {len(goals)} objetivos funcionales.")
-                for goal in goals:
-                    print(f"  {goal.id}: {goal.description}")
-
-                print("\n🏷️ Clasificando cambios individualmente...")
-                plan = classifier.classify_hunks(hunks, goals, user_context)
-
-                self._display_plan(plan)
-
-                user_description = self._get_user_description(
-                    args.user_description, interactive
-                )
-
-                action = self._get_action(args, interactive)
-                if action == 'e':
-                    return self._execute_plan(
-                        plan, diff_from_file, args, provider,
-                        key_manager, user_description
-                    )
-                elif action == 'ed':
-                    print("⚠️  Edición de plan no implementada aún.")
-                    return 1
-                else:
-                    print("Operación cancelada.")
-                    return 0
-            else:
-                print("⚠️  Modo manual no implementado aún.")
+            model_name = self._get_model_name(provider, key_manager)
+            if not model_name:
                 return 1
+            
+            print(f"🤖 Using provider: {provider}: {model_name}")
+            user_context = self._get_user_context(
+                args.user_context, provider, model_name, args
+            )
+
+            classifier = SemanticClassifier(
+                provider=provider,
+                key_manager=key_manager,
+                model_name=model_name
+            )
+
+            print("\n🚀 Analizando cambios globalmente...")
+            goals = classifier.identify_goals(hunks, user_context)
+
+            if not goals:
+                print("No se pudieron identificar objetivos. Abortando.")
+                return 1
+
+            print(f"✓ Se identificaron {len(goals)} objetivos funcionales.")
+            for goal in goals:
+                print(f"  {goal.id}: {goal.description}")
+
+            print("\n🏷️ Clasificando cambios individualmente...")
+            plan = classifier.classify_hunks(hunks, goals, user_context)
+
+            self._generate_draft_files(plan)
+
+            self._display_plan(plan)
+
+            user_description = self._get_user_description(
+                args.user_description, args
+            )
+
+            action = self._get_action(args)
+            if action == 'e':
+                return self._execute_plan(
+                    plan, diff_from_file, args, provider,
+                    key_manager, user_description
+                )
+            elif action == 'ed':
+                print("⚠️  Edición de plan no implementada aún.")
+                return 1
+            else:
+                print("Operación cancelada.")
+                return 0
 
         except KeyboardInterrupt:
             print("\n\n⚠️  Operación cancelada por el usuario.")
@@ -215,7 +284,7 @@ class SplitCommand(BaseCommand):
             if temp_branch and original_branch:
                 cleanup_temp_branch(temp_branch, original_branch)
 
-    def _get_diff(self, args, interactive: bool):
+    def _get_diff(self, args):
         """Get diff from file or git."""
         if args.diff_file:
             diff = read_diff_from_file(args.diff_file)
@@ -228,7 +297,7 @@ class SplitCommand(BaseCommand):
             return diff, True
         else:
             target = args.target
-            if interactive:
+            if not args.diff_file and args.target == 'main':
                 target = input(
                     "Introduce la rama target (ej. main): "
                 ).strip() or "main"
@@ -262,15 +331,13 @@ class SplitCommand(BaseCommand):
         ).strip().lower()
         return response == 's'
 
-    def _get_provider(self, interactive: bool) -> Optional[str]:
+    def _get_provider(self, args) -> Optional[str]:
         """Get provider selection."""
         default_provider = get_default_provider()
-        if interactive:
-            provider_input = input(
-                f"Proveedor (ollama/gemini/openai) [{default_provider}]: "
-            ).strip().lower()
-            return provider_input or default_provider
-        return default_provider
+        provider_input = input(
+            f"Proveedor (ollama/gemini/openai) [{default_provider}]: "
+        ).strip().lower()
+        return provider_input or default_provider
 
     def _get_model_name(
         self,
@@ -350,14 +417,11 @@ class SplitCommand(BaseCommand):
         user_context_arg: Optional[str],
         provider: str,
         model_name: Optional[str],
-        interactive: bool
+        args
     ) -> Optional[str]:
         """Get user context."""
         if user_context_arg:
             return self._read_file_or_text(user_context_arg)
-
-        if not interactive:
-            return None
 
         print("\n" + "="*70)
         print("📝 CONTEXTO PARA CLASIFICACIÓN")
@@ -400,14 +464,11 @@ class SplitCommand(BaseCommand):
     def _get_user_description(
         self,
         user_description_arg: Optional[str],
-        interactive: bool
+        args
     ) -> Optional[str]:
         """Get user description."""
         if user_description_arg:
             return self._read_file_or_text(user_description_arg)
-
-        if not interactive:
-            return None
 
         print("\n" + "="*70)
         print("📝 DESCRIPCIÓN DE CAMBIOS")
@@ -454,6 +515,79 @@ class SplitCommand(BaseCommand):
                 return None
         return input_str
 
+    def _generate_draft_files(self, plan: Dict[int, Dict]) -> None:
+        """Generate draft diff files for each category."""
+        draft_dir = ".gitai.draft"
+        os.makedirs(draft_dir, exist_ok=True)
+
+        for goal_id in sorted(plan.keys()):
+            data = plan[goal_id]
+            if not data["hunks"]:
+                continue
+
+            # Group hunks by file
+            hunks_by_file = {}
+            for hunk in data["hunks"]:
+                file_name = hunk.file if hasattr(hunk, 'file') else hunk['file']
+                hunk_content = (
+                    hunk.content if hasattr(hunk, 'content')
+                    else hunk['content']
+                )
+                if file_name not in hunks_by_file:
+                    hunks_by_file[file_name] = []
+                hunks_by_file[file_name].append(hunk_content)
+
+            # Combine hunks into a single diff per file
+            combined_diff_parts = []
+            for file_name in sorted(hunks_by_file.keys()):
+                file_hunks = hunks_by_file[file_name]
+                file_header = None
+                hunk_blocks = []
+
+                for hunk_content in file_hunks:
+                    # Find where hunk blocks start (@@)
+                    hunk_start = hunk_content.find('@@')
+                    if hunk_start != -1:
+                        # Extract file header from first hunk
+                        if file_header is None:
+                            file_header = hunk_content[:hunk_start]
+                        # Extract hunk block (from @@ to end)
+                        hunk_block = hunk_content[hunk_start:]
+                        # Split by @@ to get individual hunks
+                        hunk_parts = re.split(
+                            r'(@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@)',
+                            hunk_block
+                        )
+                        for i in range(1, len(hunk_parts), 2):
+                            if i + 1 < len(hunk_parts):
+                                hunk_header = hunk_parts[i]
+                                hunk_body = hunk_parts[i + 1]
+                                # Remove any trailing @@ markers
+                                next_hunk = hunk_body.find('\n@@')
+                                if next_hunk != -1:
+                                    hunk_body = hunk_body[:next_hunk]
+                                hunk_blocks.append(hunk_header + hunk_body)
+                    else:
+                        # No @@ found, use entire hunk
+                        if file_header is None:
+                            file_header = hunk_content
+                        else:
+                            hunk_blocks.append(hunk_content)
+
+                # Combine file header and all hunk blocks
+                if file_header:
+                    combined_diff_parts.append(file_header)
+                    for block in hunk_blocks:
+                        combined_diff_parts.append(block)
+
+            # Write to file
+            if combined_diff_parts:
+                diff_file = os.path.join(draft_dir, f"diff.{goal_id}.patch")
+                with open(diff_file, 'w', encoding='utf-8') as f:
+                    f.write(''.join(combined_diff_parts))
+
+        print(f"\n📁 Archivos draft generados en: {draft_dir}/")
+
     def _display_plan(self, plan: Dict[int, Dict]) -> None:
         """Display git plan."""
         print("\n" + "="*70)
@@ -477,20 +611,18 @@ class SplitCommand(BaseCommand):
 
         print("\n" + "="*70)
 
-    def _get_action(self, args, interactive: bool) -> str:
+    def _get_action(self, args) -> str:
         """Get user action."""
         if args.execute:
             return 'e'
         elif args.edit_plan:
             return 'ed'
-        elif interactive:
+        else:
             action = input(
                 "\n¿Qué deseas hacer? "
                 "(e)jecutar, (ed)itar plan, (c)ancelar [e]: "
             ).strip().lower()
             return action or 'e'
-        else:
-            return 'c'
 
     def _execute_plan(
         self,

@@ -56,6 +56,7 @@ class SemanticClassifier(AbstractClassifier):
             )
         return self._provider_instance
 
+
     def _handle_llm_error(self, error: Exception, client: Any) -> bool:
         """Handle LLM error and rotate key if needed."""
         error_str = str(error).lower()
@@ -102,45 +103,22 @@ class SemanticClassifier(AbstractClassifier):
 
         for attempt in range(max_retries):
             try:
-                # Try with structured output if supported
-                if provider.supports_structured_output() and HAS_LANGCHAIN:
-                    parser = PydanticOutputParser(pydantic_object=GitPlan)
-                    prompt_template = PromptFactory.get_goals_identification_prompt(
-                        user_context
-                    )
-                    prompt = ChatPromptTemplate.from_template(prompt_template)
-
-                    # Use LangChain chain
-                    if hasattr(client, 'invoke'):
-                        chain = prompt | client | parser
-                        result = chain.invoke({
-                            "diff_summary": summary,
-                            "format_instructions": parser.get_format_instructions()
-                        })
-                        return [
-                            Goal(id=g.id, description=g.description)
-                            for g in result.goals
-                        ]
-                else:
-                    # Fallback to simple prompt
-                    prompt_text = PromptFactory.get_goals_identification_prompt(
-                        user_context
-                    ).format(diff_summary=summary)
-
-                    response_text = provider.invoke(prompt_text)
-                    # Try to parse JSON response
-                    if response_text.startswith("```"):
-                        response_text = re.sub(
-                            r'^```(?:json)?\n?', '', response_text
-                        )
-                        response_text = re.sub(r'\n?```$', '', response_text)
-
-                    parsed = json.loads(response_text)
-                    goals_data = parsed.get("goals", [])
-                    return [
-                        Goal(id=g['id'], description=g['description'])
-                        for g in goals_data
-                    ]
+                
+                parser = PydanticOutputParser(pydantic_object=GitPlan)
+                prompt_template = PromptFactory.get_goals_identification_prompt(
+                    user_context
+                )
+                prompt = ChatPromptTemplate.from_template(prompt_template)
+                
+                chain = prompt | client | parser
+                result = chain.invoke({
+                    "diff_summary": summary,
+                    "format_instructions": parser.get_format_instructions()
+                })
+                return [
+                    Goal(id=g.id, description=g.description)
+                    for g in result.goals
+                ]
 
             except Exception as e:
                 if self._handle_llm_error(e, client):
@@ -269,36 +247,22 @@ class SemanticClassifier(AbstractClassifier):
 
         for attempt in range(max_retries):
             try:
-                if provider.supports_structured_output() and HAS_LANGCHAIN:
-                    prompt_template = PromptFactory.get_hunk_classification_prompt(
-                        user_context
-                    )
-                    prompt = ChatPromptTemplate.from_template(prompt_template)
-
-                    if hasattr(client, 'invoke'):
-                        chain = prompt | client
-                        response = chain.invoke({
-                            "goals": goals_text,
-                            "hunk": hunk['content'][:2000]
-                        })
-
-                        content = response.content.strip()
-                        goal_id = int(re.sub(r'\D', '', content))
-                        if goal_id in [g['id'] for g in goals]:
-                            return goal_id
-                else:
-                    # Fallback
-                    prompt_text = PromptFactory.get_hunk_classification_prompt(
-                        user_context
-                    ).format(
-                        goals=goals_text,
-                        hunk=hunk['content'][:2000]
-                    )
-
-                    response_text = provider.invoke(prompt_text)
-                    goal_id = int(re.sub(r'\D', '', response_text))
-                    if goal_id in [g['id'] for g in goals]:
-                        return goal_id
+                prompt_template = PromptFactory.get_hunk_classification_prompt(
+                    user_context
+                )
+                
+                prompt = ChatPromptTemplate.from_template(prompt_template)
+                
+                chain = prompt | client
+                result = chain.invoke({
+                    "goals": goals_text,
+                    "hunk": hunk['content'][:2000]
+                })
+                content = result.content.strip()
+                import pdb; pdb.set_trace()
+                goal_id = int(re.sub(r'\D', '', content))
+                if goal_id in [g['id'] for g in goals]:
+                    return goal_id
 
             except Exception as e:
                 if self._handle_llm_error(e, client):

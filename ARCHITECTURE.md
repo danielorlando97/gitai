@@ -53,7 +53,7 @@ src/
 El `ProviderFactory` permite crear providers dinámicamente:
 
 ```python
-from src.providers import ProviderFactory
+from gitai.providers import ProviderFactory
 
 provider = ProviderFactory.create(
     "gemini",
@@ -67,7 +67,7 @@ provider = ProviderFactory.create(
 La capa de almacenamiento está abstraída:
 
 ```python
-from src.storage import APIKeyRepository
+from gitai.storage import APIKeyRepository
 
 repo = APIKeyRepository()
 keys = repo.list_all({"provider": "gemini"})

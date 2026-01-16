@@ -1,480 +1,261 @@
-# GitClassifier
+# GitAI
 
-Herramienta inteligente para clasificar y dividir cambios de Git en commits semánticos usando LLM.
+AI-powered Git workflow assistant that helps you create atomic commits and professional Pull Requests using Cursor AI.
 
-**CLI integral** con gestión de API keys, rotación automática y múltiples modos de ejecución.
+## Features
 
-## Características
+- 🤖 **AI-Powered Commit Generation**: Automatically analyzes your changes and generates atomic commits following Conventional Commits standards
+- 📝 **Professional PR Descriptions**: Creates well-structured Pull Request descriptions with all necessary sections
+- ⚡ **Automated Workflow**: Single command to generate commits, apply them, and create PRs
+- 🎯 **Conventional Commits**: Follows industry-standard commit message formats
+- 🔧 **Flexible Base Branch**: Specify target branch for Pull Requests
 
-- 🔍 **Análisis Global**: El LLM analiza todos los cambios para identificar objetivos funcionales
-- 🏷️ **Clasificación Automática**: Cada bloque de cambios se asigna automáticamente a un objetivo
-- 📋 **Git Plan**: Vista previa del plan de commits antes de ejecutar
-- 🔄 **Modo Manual**: Opción para clasificar manualmente si prefieres control total
-- 🛠️ **LangChain Integration**: Usa LangChain con Pydantic para estructuración robusta de datos
-- ⚡ **Gemini 1.5 Flash**: Modelo rápido y económico por defecto
-- 📝 **Generación de PR Summary**: Crea automáticamente un resumen profesional para Pull Requests
-- 🔑 **CLI Integral**: Gestión de API keys integrada con comandos `api-key` y `help`
-- 🔄 **Rotación Automática**: Cambia automáticamente de API key cuando se alcanzan límites
+## Requirements
 
-## Instalación
+- [Cursor AI](https://cursor.sh/) - AI-powered code editor
+- [GitHub CLI](https://cli.github.com/) (`gh`) - Required for PR creation
+- Git - Version control system
+- Bash shell
 
-### Instalación Rápida
+## Installation
 
+1. Clone this repository:
+```bash
+git clone <repository-url>
+cd gitai
+```
+
+2. Run the installation script:
 ```bash
 ./install.sh
 ```
 
-Este script:
-- Instala todas las dependencias
-- Hace el script ejecutable
-- Opcionalmente crea un alias `git-split` global
+3. The installer will:
+   - Copy the `gitai` command to `~/.local/bin/`
+   - Install prompt files to `~/.local/share/gitai/`
+   - Add `~/.local/bin` to your PATH (if not already present)
 
-### Instalación Manual
+4. Reload your shell configuration:
+```bash
+source ~/.zshrc  # or ~/.bashrc
+```
+
+5. Verify installation:
+```bash
+gitai --help
+```
+
+## Usage
+
+### Generate Atomic Commits
+
+Analyze your changes and generate a script with atomic commits:
 
 ```bash
-pip install -r requirements.txt
-chmod +x git_splitter.py
+gitai generate commit
 ```
 
-## Configuración
+This will:
+1. Analyze all modified, new, and deleted files
+2. Group changes into logical atomic commits
+3. Generate a `gitai.sh` script with commit commands
+4. You can review and execute: `sh gitai.sh`
 
-### Gestión de API Keys con SQLite (Recomendado)
+### Generate Pull Request
 
-La herramienta incluye un sistema de gestión de API keys con SQLite que permite:
-
-- ✅ **Múltiples API keys**: Añade varias keys para el mismo provider
-- ✅ **Rotación automática**: Cambia automáticamente cuando se alcanza el rate limit
-- ✅ **Gestión centralizada**: Todas las keys en una base de datos local
-- ✅ **Historial de errores**: Registra errores para evitar keys problemáticas
-
-#### Comandos de gestión de API keys:
+Create a professional PR description:
 
 ```bash
-# Añadir una API key
-git-split api-key add gemini "Mi key principal"
-git-split api-key add gemini "Key de respaldo"
+# Without base branch (uses repository default)
+gitai generate pr
 
-# Listar todas las keys
-git-split api-key list
-git-split api-key list gemini  # Solo keys de Gemini
-
-# Eliminar una key
-git-split api-key delete 1
-
-# Ver ayuda
-git-split help
+# With specific base branch
+gitai generate pr --base main
+gitai generate pr -b develop
 ```
 
-#### Rotación automática:
+This will:
+1. Analyze your changes
+2. Generate a comprehensive PR description following best practices
+3. Create a `gitai.sh` script with `gh pr create` command
+4. You can review and execute: `sh gitai.sh`
 
-Cuando una API key alcanza su límite de rate/quota:
-1. El sistema detecta el error automáticamente
-2. Registra el error en la base de datos
-3. Cambia a la siguiente key disponible
-4. Reintenta la operación automáticamente
-5. Evita usar keys con errores recientes (últimos 5 minutos)
+### Automated Workflow
 
-#### Espera automática cuando todas las keys fallan:
-
-Si todas las API keys han alcanzado su límite para una misma operación:
-1. El sistema detecta que todas las keys han sido probadas
-2. Espera automáticamente (por defecto 5 minutos, configurable)
-3. Muestra un contador de tiempo restante
-4. Reintenta con todas las keys después de la espera
-
-Configuración:
-```bash
-export API_KEY_WAIT_MINUTES=5  # Minutos a esperar (por defecto: 5)
-```
-
-### Configuración tradicional (Variables de entorno)
-
-Si prefieres usar variables de entorno en lugar de la base de datos:
-
-#### Gemini (Recomendado - Usa LangChain)
+Execute the complete workflow in one command:
 
 ```bash
-export GOOGLE_API_KEY="tu-api-key-aqui"
-export GEMINI_MODEL="gemini-1.5-flash"  # Opcional
+# Without base branch
+gitai update
+
+# With specific base branch
+gitai update --base main
+gitai update -b develop
 ```
 
-**Ventajas de Gemini con LangChain:**
-- ✅ Estructuración automática con Pydantic (sin errores de parseo JSON)
-- ✅ Más económico y rápido (Gemini 1.5 Flash)
-- ✅ Fácil cambio de modelos
-- ✅ Encadenamiento de operaciones simplificado
+This will automatically:
+1. Generate atomic commits script
+2. Execute commits
+3. Generate PR creation script
+4. Create the Pull Request
+5. Clean up temporary files
 
-#### OpenAI (Alternativa)
+## Commands
+
+### `gitai generate commit`
+
+Generates a `gitai.sh` script containing atomic commits based on your current changes.
+
+**Example output:**
+```bash
+#!/bin/bash
+# Initial project configuration
+git add package.json tsconfig.json
+git commit -m "chore: initialize base project configuration"
+
+# Implement data models
+git add src/models/*.ts
+git commit -m "feat: add main data models"
+```
+
+### `gitai generate pr [--base <branch>]`
+
+Generates a `gitai.sh` script with a `gh pr create` command including a well-structured PR description.
+
+**Options:**
+- `--base, -b <branch>`: Target base branch for the PR
+
+**Example output:**
+```bash
+#!/bin/bash
+# Create Pull Request
+
+gh pr create --title "feat: add user authentication" --body "## Description
+..."
+```
+
+### `gitai update [--base <branch>]`
+
+Executes the complete workflow: generates commits, applies them, generates PR, and creates it.
+
+**Options:**
+- `--base, -b <branch>`: Target base branch for the PR
+
+**Workflow:**
+1. Step 1/4: Generating commit script
+2. Step 2/4: Executing commits
+3. Step 3/4: Generating PR script
+4. Step 4/4: Creating PR
+
+## PR Description Format
+
+The generated PR descriptions follow this structure:
+
+- **Description**: Brief explanation of why changes are needed
+- **Context / Problem**: What error or behavior was observed
+- **Solution / Changes**: Key technical changes made
+- **Testing Instructions**: Steps to validate the behavior
+- **Impact / Considerations**: Affected components, breaking changes, risks
+- **Tickets**: Related ticket numbers (if applicable)
+
+## Commit Message Format
+
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/) standards:
+
+- `feat:` - New features
+- `fix:` - Bug fixes
+- `refactor:` - Code refactoring
+- `docs:` - Documentation changes
+- `style:` - Formatting changes
+- `test:` - Test additions/modifications
+- `chore:` - Build changes, dependencies, configs
+
+## Examples
+
+### Basic Workflow
 
 ```bash
-export OPENAI_API_KEY="tu-api-key-aqui"
-export OPENAI_MODEL="gpt-4o-mini"  # Opcional
+# Make some changes to your code
+git add .
+gitai generate commit
+# Review gitai.sh
+sh gitai.sh
 ```
 
-#### Ollama (Local)
+### Create PR with Specific Base Branch
 
 ```bash
-export OLLAMA_BASE_URL="http://localhost:11434/v1"  # Opcional
+gitai generate pr --base main
+# Review gitai.sh
+sh gitai.sh
 ```
 
-Asegúrate de tener Ollama corriendo localmente.
-
-**Nota**: Si hay API keys en la base de datos, estas tienen prioridad sobre las variables de entorno.
-
-## Uso
-
-### Modo Interactivo (Por defecto)
+### Complete Automated Workflow
 
 ```bash
-git-split
-# O
-python git_splitter.py
+# Make changes, then:
+gitai update --base main
+# That's it! Commits are created and PR is opened
 ```
 
-El script te pedirá:
-1. **Fuente del diff**: Usar diff desde archivo o desde git (rama target)
-2. Si eliges archivo: La ruta al archivo de diff
-3. Si eliges git: La rama target (por defecto: `main`)
-4. Si quieres usar clasificación automática con LLM
-5. El proveedor (Gemini por defecto, OpenAI u Ollama)
-6. Confirmación del Git Plan antes de ejecutar
+## How It Works
 
-### Usar Diff desde Archivo
+GitAI uses Cursor AI's agent capabilities to:
 
-Puedes analizar un diff guardado en un archivo en lugar de usar comandos de git:
+1. **Analyze Changes**: Examines your git diff and project structure
+2. **Understand Context**: Identifies logical groupings and dependencies
+3. **Generate Scripts**: Creates executable bash scripts with git/gh commands
+4. **Follow Best Practices**: Applies Conventional Commits and PR description standards
 
+The tool generates scripts that you can review before executing, giving you full control over the process.
+
+## Troubleshooting
+
+### Command not found
+
+If `gitai` command is not found after installation:
+
+1. Ensure `~/.local/bin` is in your PATH:
 ```bash
-git-split
-# ¿Usar diff desde archivo? (s/N): s
-# Introduce la ruta del archivo de diff: /ruta/a/mi/diff.patch
+echo $PATH | grep -q ".local/bin" || export PATH="$HOME/.local/bin:$PATH"
 ```
 
-**Ventajas:**
-- Analiza diffs guardados previamente
-- Útil para revisar cambios de otros o de PRs
-- Permite analizar diffs sin estar en el repositorio original
-
-**Advertencias:**
-- Los commits solo se aplicarán si el diff es compatible con el estado actual del repositorio
-- No se puede hacer rollback automático cuando el diff proviene de un archivo (no hay punto de referencia en git)
-- El archivo debe contener un diff válido en formato estándar de git
-
-### Comandos CLI
-
+2. Add to your shell config file (`~/.zshrc` or `~/.bashrc`):
 ```bash
-# Ver ayuda
-git-split help
-
-# Gestionar API keys
-git-split api-key add gemini "Mi key"
-git-split api-key list
-git-split api-key delete 1
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
-## Flujo de Trabajo
-
-1. **Extracción**: Obtiene todos los hunks del diff
-2. **Análisis Global (LLM)**: Identifica objetivos funcionales
-3. **Clasificación (LLM)**: Asigna cada hunk a un objetivo
-4. **Revisión Humana**: Muestra el Git Plan para confirmar
-5. **Edición Opcional**: Permite mover hunks entre commits
-6. **Ejecución**: Crea los commits automáticamente
-
-## Edición del Plan
-
-Después de que el LLM genera el plan, puedes editarlo manualmente:
-
-- `m [id_origen] [id_destino] [archivo]` - Mover archivo entre commits
-- `r [id] [nuevo mensaje]` - Renombrar commit
-- `d [id]` - Descartar commit del plan
-- `n [mensaje]` - Crear nuevo commit vacío
-- `e` - Ejecutar commits (salir del editor)
-- `q` - Salir sin hacer nada
-
-### Ejemplo de Edición
-
-```
-ID [1] 📝 Mensaje: Fix authentication bug
-   • auth.py (3 hunk(s))
-   • login.py (2 hunk(s))
-
-ID [2] 📝 Mensaje: Add user profile endpoint
-   • api.py (5 hunk(s))
-   • models.py (2 hunk(s))
-
-> m 1 2 login.py
-✅ Movido login.py del commit 1 al 2
+3. Reload your shell:
+```bash
+source ~/.zshrc  # or ~/.bashrc
 ```
 
-## Mecanismo de Rollback
+### Cursor not found
 
-La herramienta incluye un sistema de seguridad automático:
+Make sure Cursor AI is installed and the `cursor` command is available in your PATH.
 
-- **Guardado del estado**: Antes de ejecutar, guarda el SHA del HEAD actual
-- **Rollback con `--soft`**: Si un commit falla, deshace commits pero **mantiene tus cambios intactos** en los archivos
-- **Protección contra interrupciones**: Si presionas Ctrl+C, pregunta si deseas hacer rollback
-- **Limpieza del index**: Antes de cada commit, limpia el staging area para evitar conflictos
+### GitHub CLI not found
 
-Esto garantiza que tu repositorio siempre quede en un estado consistente, incluso si algo sale mal durante la ejecución. Tus cambios nunca se perderán gracias al uso de `git reset --soft`.
+Install GitHub CLI:
+- macOS: `brew install gh`
+- Linux: See [GitHub CLI installation guide](https://cli.github.com/manual/installation)
 
-## Modos de Ejecución
+### No changes found
 
-### Modo Normal
-
-Ejecuta todos los commits automáticamente:
-
-- Crea todos los commits de una vez
-- Opción de ejecutar tests al final
-- Rollback automático si algo falla
-
-### Modo Paso a Paso (Isolation Mode)
-
-Aísla visualmente cada commit antes de confirmarlo:
-
-- **Aislamiento visual**: Usa `git stash --keep-index` para que solo veas los cambios del commit actual en tu editor
-- **Revisión individual**: Puedes probar, compilar o revisar cada commit aisladamente
-- **Control total**: Para cada commit puedes:
-  - `c` - Confirmar y continuar
-  - `s` - Saltar este commit
-  - `a` - Abortar todo y hacer rollback
-
-**Ventajas del modo paso a paso:**
-- Pruebas unitarias por commit: Ejecuta tests específicos para cada cambio
-- Revisión visual limpia: Sin el "ruido" de otros cambios en el editor
-- Detección temprana de dependencias: Si un commit no compila, lo detectas antes de confirmarlo
-
-Ejemplo:
-```
-Modo de ejecución: (n)ormal / (p)aso a paso [n]: p
-
-🛠️  MODO PASO A PASO ACTIVADO
-Tu código se filtrará para que veas solo el commit actual.
-
-📦 Preparando Commit 1: Fix authentication bug
-👉 Ahora puedes revisar/probar el código en tu editor.
-Solo los cambios de 'Fix authentication bug' están presentes.
-
-¿Confirmar commit 1? [c]onfirmar / [s]altar / [a]bortar todo: c
-✅ [1] Commit realizado.
+Ensure you have uncommitted changes or staged files:
+```bash
+git status
+git diff
 ```
 
-## Ejecución de Tests
+## Contributing
 
-En modo normal, después de crear todos los commits puedes ejecutar tests:
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-- Si los tests fallan, se hace rollback automático de todos los commits
-- Soporta cualquier comando de tests (pytest, npm test, make test, etc.)
-- Opcional: puedes omitir los tests si no los necesitas
+## License
 
-Ejemplo:
-```
-¿Ejecutar tests después de los commits? (deja vacío para omitir, ej: 'pytest' o 'npm test'): pytest
+See [LICENSE](LICENSE) file for details.
 
-🧪 Ejecutando tests: pytest
-✅ Todos los tests pasaron.
-```
+## Support
 
-## Contexto para Clasificación
-
-Cuando eliges usar clasificación automática con LLM, puedes proporcionar un contexto general de todos los cambios:
-
-- **Antes de la clasificación**: Se solicita justo después de elegir usar LLM, antes de que el modelo analice los cambios
-- **Mejora la precisión**: El LLM usa este contexto para entender mejor el propósito general de los cambios
-- **Opcional**: Puedes escribir un contexto detallado o dejarlo vacío
-- **Multilínea**: Soporta contextos de múltiples líneas
-
-Para finalizar el contexto, presiona Enter dos veces o deja la primera línea vacía.
-
-**Ejemplo:**
-```
-¿Usar clasificación automática con LLM? (s/N): s
-Proveedor (gemini/openai/ollama) [gemini]: 
-
-📝 CONTEXTO PARA CLASIFICACIÓN
-======================================================================
-Opcional: Explica de forma general todos los cambios que están 
-actualmente en el diff.
-Este contexto ayudará al LLM a clasificar mejor los cambios. 
-Presiona Enter dos veces para finalizar o dejar vacío.
-======================================================================
-Este PR refactoriza el sistema de autenticación para usar JWT tokens
-y añade nuevas funcionalidades de perfil de usuario. También corrige
-varios bugs en la validación de formularios.
-
-[Enter dos veces para finalizar]
-
-🚀 Analizando cambios globalmente...
-```
-
-## Descripción de Cambios (para PR)
-
-Después de mostrar el Git Plan, puedes añadir una descripción general de todos los cambios que se incluirá en el resumen de PR:
-
-- **Opcional**: Puedes escribir una descripción detallada o dejarla vacía
-- **Multilínea**: Soporta descripciones de múltiples líneas
-- **Integrada en PR**: Se incluye automáticamente en el resumen de PR si se genera
-
-Para finalizar la descripción, presiona Enter dos veces o deja la primera línea vacía.
-
-## Generación de Resumen de Pull Request
-
-Después de crear los commits, puedes generar automáticamente un resumen profesional para tu Pull Request:
-
-- **Generación Inteligente**: Usa el LLM para crear un resumen conciso y profesional
-- **Incluye tu descripción**: Si proporcionaste una descripción, se añade al resumen
-- **Guardado Automático**: Se guarda en `PR_SUMMARY.md` para copiar y pegar
-- **Visualización**: Muestra el resumen en la terminal antes de guardarlo
-- **Opcional**: Puedes omitir la generación si no la necesitas
-
-Ejemplo:
-```
-📋 GIT PLAN PROPUESTO
-======================================================================
-[Commit 1]: Fix authentication bug in login flow
-[Commit 2]: Add user profile endpoint
-======================================================================
-
-📝 DESCRIPCIÓN DE CAMBIOS
-======================================================================
-Opcional: Escribe una descripción general de todos los cambios 
-realizados.
-Presiona Enter dos veces para finalizar o dejar vacío.
-======================================================================
-Este PR mejora el sistema de autenticación y añade funcionalidades
-de perfil de usuario. Los cambios incluyen mejoras de seguridad
-y nuevas APIs para gestión de perfiles.
-
-[Enter dos veces para finalizar]
-
-¿Qué deseas hacer? (e)jecutar, (ed)itar plan, (c)ancelar [e]: e
-¿Generar resumen de Pull Request? (s/N): s
-
-📝 Generando resumen de Pull Request...
-
-============================================================
-RESUMEN DE PR GENERADO:
-============================================================
-## Resumen
-
-Este PR implementa mejoras significativas en el sistema de 
-autenticación y añade nuevas funcionalidades de perfil de usuario.
-
-### Cambios Principales
-
-- Refactorización del flujo de login para mejorar la seguridad
-- Corrección de bugs en la validación de tokens
-- Implementación de endpoint de perfil de usuario
-
-## Descripción del Usuario
-
-Este PR mejora el sistema de autenticación y añade funcionalidades
-de perfil de usuario. Los cambios incluyen mejoras de seguridad
-y nuevas APIs para gestión de perfiles.
-============================================================
-
-📝 Resumen de PR guardado en: PR_SUMMARY.md
-```
-
-## Ejemplo
-
-```
-📦 Se encontraron 15 bloques de cambios.
-¿Usar clasificación automática con LLM? (s/N): s
-Proveedor (gemini/openai/ollama) [gemini]: gemini
-
-🚀 Analizando cambios globalmente...
-✓ Se identificaron 3 objetivos funcionales.
-
-🏷️ Clasificando cambios individualmente...
-Clasificando cambios...
-
-📋 GIT PLAN PROPUESTO
-======================================================================
-[Commit 1]: Fix authentication bug in login flow
-  Hunks: 5 | Archivos: 2
-  Archivos: auth.py, login.py
-
-[Commit 2]: Add user profile endpoint
-  Hunks: 7 | Archivos: 3
-  Archivos: api.py, models.py, routes.py
-
-[Commit 3]: Refactor database connection handling
-  Hunks: 3 | Archivos: 1
-  Archivos: db.py
-======================================================================
-
-¿Qué deseas hacer? (e)jecutar, (ed)itar plan, (c)ancelar [e]: ed
-
-📋 ESTADO ACTUAL DEL GIT PLAN
-============================================================
-
-ID [1] 📝 Mensaje: Fix authentication bug in login flow
-   • auth.py (3 hunk(s))
-   • login.py (2 hunk(s))
-
-ID [2] 📝 Mensaje: Add user profile endpoint
-   • api.py (5 hunk(s))
-   • models.py (2 hunk(s))
-
-Comandos disponibles:
-  m [id_origen] [id_destino] [archivo]  -> Mover archivo
-  r [id] [nuevo mensaje]                -> Renombrar commit
-  d [id]                                 -> Descartar commit
-  n [mensaje]                            -> Nuevo commit
-  e                                      -> EJECUTAR COMMITS
-  q                                      -> Salir sin hacer nada
-
-> m 1 2 login.py
-✅ Movido login.py del commit 1 al 2
-
-> e
-
---- Generando Commits ---
-Creando commit 1: Fix authentication bug in login flow...
-✓ Commit 'Fix authentication bug in login flow' creado.
-Creando commit 2: Add user profile endpoint...
-✓ Commit 'Add user profile endpoint' creado.
-
-🎉 ¡Todos los cambios han sido organizados!
-```
-
-## ¿Por qué LangChain?
-
-La herramienta usa **LangChain** con **Pydantic** para:
-
-1. **Estructuración Robusta**: `PydanticOutputParser` garantiza que el LLM devuelva JSON válido según el esquema definido, eliminando errores de parseo
-2. **Facilidad de Cambio**: Cambiar de Gemini a otro modelo es solo una línea de código
-3. **Encadenamiento Limpio**: La sintaxis `prompt | llm | parser` hace el código más legible y mantenible
-4. **Few-shot Learning**: En el futuro, puedes añadir ejemplos para mejorar la clasificación
-
-## Manejo de Ramas
-
-Si estás en la misma rama que el target, el script automáticamente:
-
-1. **Crea una rama temporal** con un ID único (formato: `git-split-draft-{timestamp}-{uuid}`)
-2. **Cambia a esa rama** para analizar los cambios
-3. **Al finalizar**, vuelve a la rama original
-4. **Elimina la rama temporal** automáticamente
-
-Esto permite analizar cambios incluso cuando estás en la misma rama que el target, sin afectar tu rama de trabajo.
-
-Ejemplo:
-```
-⚠️  Estás en la misma rama que el target (main).
-   Creando rama temporal para analizar cambios...
-🌿 Creada rama temporal: git-split-draft-1234567890-a1b2c3d4
-...
-✅ Vuelto a rama: main
-🗑️  Rama temporal eliminada: git-split-draft-1234567890-a1b2c3d4
-```
-
-## Notas
-
-- El script usa `git apply --cached` para aplicar cambios sin modificar archivos físicos
-- Los hunks no clasificados se omiten automáticamente
-- Puedes cancelar en cualquier momento antes de la ejecución
-- El modo paso a paso maneja automáticamente archivos nuevos (untracked) con `git stash -u`
-- Si hay conflictos al restaurar cambios en modo paso a paso, el script te avisará para resolverlos manualmente
-- Si LangChain no está disponible, el script hace fallback a OpenAI/Ollama con el método tradicional
-- Si se crea una rama temporal, se limpia automáticamente al finalizar (incluso si hay errores)
-
+For issues, questions, or suggestions, please open an issue on the repository.

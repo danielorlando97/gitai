@@ -232,6 +232,9 @@ if [ "$1" = "update" ]; then
     # Add git root navigation to generated script
     add_git_root_navigation "gitai.sh"
 
+    # Save absolute path to gitai.sh before execution (script changes directory)
+    GITAI_SCRIPT_PATH="$(pwd)/gitai.sh"
+
     # Step 2: Execute commit script
     echo ""
     if [ -n "$BASE_BRANCH" ]; then
@@ -240,13 +243,13 @@ if [ "$1" = "update" ]; then
         echo "Step 2/3: Executing commits..."
     fi
     
-    chmod +x gitai.sh
-    sh gitai.sh
+    chmod +x "$GITAI_SCRIPT_PATH"
+    sh "$GITAI_SCRIPT_PATH"
     COMMIT_EXIT_CODE=$?
     
     if [ $COMMIT_EXIT_CODE -ne 0 ]; then
         echo "Error: Commit script failed with exit code $COMMIT_EXIT_CODE"
-        rm -f gitai.sh
+        rm -f "$GITAI_SCRIPT_PATH"
         exit $COMMIT_EXIT_CODE
     fi
 
@@ -260,13 +263,13 @@ if [ "$1" = "update" ]; then
         GIT_ROOT=$(find_git_root)
         if [ -z "$GIT_ROOT" ]; then
             echo "Error: Not in a git repository"
-            rm -f gitai.sh
+            rm -f "$GITAI_SCRIPT_PATH"
             exit 1
         fi
         cd "$GIT_ROOT" || exit 1
         
         git push origin $(git branch --show-current)
-        rm -f gitai.sh
+        rm -f "$GITAI_SCRIPT_PATH"
         
         echo ""
         echo "✓ Update workflow completed successfully!"
@@ -280,7 +283,7 @@ if [ "$1" = "update" ]; then
     PR_PROMPT_FILE="$HOME/.local/share/gitai/pr-prompt.md"
     if [ ! -f "$PR_PROMPT_FILE" ]; then
         echo "Error: pr-prompt.md not found at $PR_PROMPT_FILE"
-        rm -f gitai.sh
+        rm -f "$GITAI_SCRIPT_PATH"
         exit 1
     fi
 
@@ -300,15 +303,18 @@ Include the flag \`--base $BASE_BRANCH\` in the \`gh pr create\` command."
     # Add git root navigation to generated script
     add_git_root_navigation "gitai.sh"
 
+    # Save absolute path to gitai.sh before execution (script changes directory)
+    GITAI_SCRIPT_PATH="$(pwd)/gitai.sh"
+
     # Step 4: Execute PR script
     echo ""
     echo "Step 4/4: Creating PR..."
-    chmod +x gitai.sh
-    sh gitai.sh
+    chmod +x "$GITAI_SCRIPT_PATH"
+    sh "$GITAI_SCRIPT_PATH"
     PR_EXIT_CODE=$?
     
     # Cleanup
-    rm -f gitai.sh
+    rm -f "$GITAI_SCRIPT_PATH"
 
     if [ $PR_EXIT_CODE -ne 0 ]; then
         echo "Error: PR creation script failed with exit code $PR_EXIT_CODE"

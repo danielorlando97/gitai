@@ -1,5 +1,64 @@
 #!/bin/bash
 
+# Function to find git repository root directory
+find_git_root() {
+    local current_dir="$(pwd)"
+    while [ "$current_dir" != "/" ] && [ ! -d "$current_dir/.git" ]; do
+        current_dir="$(dirname "$current_dir")"
+    done
+    
+    if [ -d "$current_dir/.git" ]; then
+        echo "$current_dir"
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Function to add git root navigation to gitai.sh script
+add_git_root_navigation() {
+    local script_file="$1"
+    if [ ! -f "$script_file" ]; then
+        return 1
+    fi
+    
+    # Create a temporary file
+    local temp_file=$(mktemp)
+    
+    # Read the script and add navigation after shebang
+    local in_shebang=true
+    while IFS= read -r line; do
+        if [ "$in_shebang" = true ] && [[ "$line" =~ ^#!/ ]]; then
+            # Write shebang
+            echo "$line" >> "$temp_file"
+            # Add git root navigation
+            cat >> "$temp_file" << 'NAVIGATION'
+# Navigate to git repository root
+# Find the nearest .git directory by traversing up the directory tree
+GIT_ROOT="$(pwd)"
+while [ "$GIT_ROOT" != "/" ] && [ ! -d "$GIT_ROOT/.git" ]; do
+    GIT_ROOT="$(dirname "$GIT_ROOT")"
+done
+
+if [ ! -d "$GIT_ROOT/.git" ]; then
+    echo "Error: Not in a git repository"
+    exit 1
+fi
+
+# Change to git root directory
+cd "$GIT_ROOT" || exit 1
+
+NAVIGATION
+            in_shebang=false
+        else
+            echo "$line" >> "$temp_file"
+        fi
+    done < "$script_file"
+    
+    # Replace original file with modified version
+    mv "$temp_file" "$script_file"
+}
+
 # Show help if requested
 if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     cat << 'HELP'
@@ -51,8 +110,14 @@ if [ "$1" = "generate" ] && [ "$2" = "commit" ]; then
         exit 1
     fi
 
-    # Run cursor agent with the prompt
-    cursor agent --stream-partial-output --output-format stream-json -p "$(cat "$PROMPT_FILE")"
+    # Run cursor agent with the prompt (always use auto model selection)
+    cursor agent --stream-partial-output --output-format stream-json --model auto -p "$(cat "$PROMPT_FILE")"
+    
+    # Add git root navigation to generated script if it exists
+    if [ -f "gitai.sh" ]; then
+        add_git_root_navigation "gitai.sh"
+    fi
+    
     exit 0
 fi
 
@@ -104,8 +169,14 @@ if [ "$1" = "generate" ] && [ "$2" = "pr" ]; then
 Include the flag \`--base $BASE_BRANCH\` in the \`gh pr create\` command."
     fi
 
-    # Run cursor agent with the prompt
-    cursor agent --stream-partial-output --output-format stream-json -p "$PROMPT_CONTENT"
+    # Run cursor agent with the prompt (always use auto model selection)
+    cursor agent --stream-partial-output --output-format stream-json --model auto -p "$PROMPT_CONTENT"
+    
+    # Add git root navigation to generated script if it exists
+    if [ -f "gitai.sh" ]; then
+        add_git_root_navigation "gitai.sh"
+    fi
+    
     exit 0
 fi
 
@@ -151,12 +222,15 @@ if [ "$1" = "update" ]; then
         exit 1
     fi
     
-    cursor agent --stream-partial-output --output-format stream-json -p "$(cat "$PROMPT_FILE")"
+    cursor agent --stream-partial-output --output-format stream-json --model auto -p "$(cat "$PROMPT_FILE")"
     
     if [ ! -f "gitai.sh" ]; then
         echo "Error: gitai.sh was not generated"
         exit 1
     fi
+
+    # Add git root navigation to generated script
+    add_git_root_navigation "gitai.sh"
 
     # Step 2: Execute commit script
     echo ""
@@ -181,6 +255,16 @@ if [ "$1" = "update" ]; then
         # Step 3: Cleanup
         echo ""
         echo "Step 3/3: Cleaning up..."
+        
+        # Navigate to git root before pushing
+        GIT_ROOT=$(find_git_root)
+        if [ -z "$GIT_ROOT" ]; then
+            echo "Error: Not in a git repository"
+            rm -f gitai.sh
+            exit 1
+        fi
+        cd "$GIT_ROOT" || exit 1
+        
         git push origin $(git branch --show-current)
         rm -f gitai.sh
         
@@ -206,12 +290,15 @@ if [ "$1" = "update" ]; then
 **IMPORTANT:** The base branch for this PR is: $BASE_BRANCH
 Include the flag \`--base $BASE_BRANCH\` in the \`gh pr create\` command."
 
-    cursor agent --stream-partial-output --output-format stream-json -p "$PROMPT_CONTENT"
+    cursor agent --stream-partial-output --output-format stream-json --model auto -p "$PROMPT_CONTENT"
     
     if [ ! -f "gitai.sh" ]; then
         echo "Error: gitai.sh was not generated"
         exit 1
     fi
+
+    # Add git root navigation to generated script
+    add_git_root_navigation "gitai.sh"
 
     # Step 4: Execute PR script
     echo ""
